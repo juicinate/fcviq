@@ -1,2 +1,2 @@
-# fcviq
-An interactive ersion of the flemish CVI questionnaire.
+# FCVIQ
+An interactive version of the Flemish CVI Questionnaire.
