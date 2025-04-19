@@ -86,9 +86,36 @@ server <- function(input, output, session) {
     )
   })
   
-  color_values <- data.frame(good = "#00A600", bad = "#D93243", 
-                             bright = "#75BEBD", dark = "#5B3F79")
+  color_values <- data.frame(
+    good = "#00A600", bad = "#D93243", 
+    bright = "#75BEBD", dark = "#5B3F79"
+  )
 
+  group_table <- data.frame(
+    group = 1:5,
+    cutoff = c(
+      0.27,
+      0.30,
+      0.32,
+      0.46,
+      0.30
+    ),
+    group_name_de = c(
+      "Objekt- und Gesichtserkennung",
+      "Visuelles Interesse",
+      "Crowding und visueller Überblick",
+      "Fortbewegung im Raum",
+      "Angstbezogenes Verhalten"
+    ),
+    group_name_en = c(
+      "Object and face recognition",
+      "Visual interest",
+      "Clutter and distance viewing",
+      "Moving in space",
+      "Anxiety-related behaviour"
+    )
+  )
+  
   output$questionsUI <- renderUI({
     req(questions_data())
 
@@ -254,31 +281,6 @@ server <- function(input, output, session) {
       # plotOutput("groupPlot")
     )
   })
-
-  group_table <- data.frame(
-    group = 1:5,
-    cutoff = c(
-      0.27,
-      0.30,
-      0.32,
-      0.46,
-      0.30
-    ),
-    group_name_de = c(
-      "Objekt- und Gesichtserkennung",
-      "Visuelles Interesse",
-      "Crowding und visueller Überblick",
-      "Fortbewegung im Raum",
-      "Angstbezogenes Verhalten"
-    ),
-    group_name_en = c(
-      "Object and face recognition",
-      "Visual interest",
-      "Clutter and distance viewing",
-      "Moving in space",
-      "Anxiety-related behaviour"
-    )
-  )
 
   # Render summary table
   output$summaryTable <- render_gt({
