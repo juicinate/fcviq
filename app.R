@@ -18,7 +18,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 library(shiny)
 library(shinyjs)
@@ -35,6 +35,7 @@ ui <- bslib::page_navbar(
   title = "Flemish CVI Questionnaire (FCVIQ)",
   nav_panel("FCVIQ", uiOutput("questionsUI"), value = "input"),
   nav_panel("Auswertung", uiOutput("resultsOutput"), value = "results"),
+  nav_panel("Info", uiOutput("information"), value = "info"),
   nav_item(
     selectInput(
       inputId = "language",
@@ -347,6 +348,10 @@ server <- function(input, output, session) {
         legend.position = "none"
       ) +
       ylim(0, 1.1) # Add some space for labels
+  })
+  
+  output$information <- renderUI({
+    includeMarkdown("README.md")
   })
 }
 
