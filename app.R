@@ -12,7 +12,7 @@
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# any later version.
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -22,20 +22,21 @@
 
 library(shiny)
 library(shinyjs)
+library(bslib)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(bslib)
 library(gt)
 library(gtExtras)
 
 ui <- bslib::page_navbar(
   useShinyjs(),
-  theme = bs_theme(version = 5, preset = "pulse"),
+  theme = bs_theme(version = 5),
   title = "Flemish CVI Questionnaire (FCVIQ)",
   nav_panel("FCVIQ", uiOutput("questionsUI"), value = "input"),
   nav_panel("Auswertung", uiOutput("resultsOutput"), value = "results"),
   nav_panel("Info", uiOutput("information"), value = "info"),
+  nav_spacer(),
   nav_item(
     selectInput(
       inputId = "language",
@@ -43,8 +44,8 @@ ui <- bslib::page_navbar(
       choices = c("Deutsch" = "de", "English" = "en"),
       selected = "de",
       width = "150px"
-    )
-  ),
+    )),
+  nav_item(bslib::input_dark_mode()),
   id = "page"
 )
 
@@ -136,7 +137,7 @@ server <- function(input, output, session) {
         div(
           id = paste0("question_container_", question_id),
           class = "question-container",
-          style = "padding: 10px; margin-bottom: 15px; border-left: 4px solid transparent;",
+          style = "padding: 10px; margin-bottom: 10px; border-left: 4px solid transparent; border-top: 2px solid grey",
           tagList(
             h6(paste0(i, ": ", question_text)),
             radioButtons(
@@ -147,14 +148,14 @@ server <- function(input, output, session) {
               } else {
                 c("No" = FALSE, "Yes" = TRUE)
               },
-              selected = NA,
+              selected = NA, # change to NA for production, FALSE for testing
               inline = TRUE
-            )
+            ), 
           )
         )
       }),
       br(),
-      actionButton("submit", "Auswerten", class = "btn-primary"),
+      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
       br()
     )
   })
@@ -275,7 +276,7 @@ server <- function(input, output, session) {
       h3("Ergebnisse"), br(),
 
       # Summary table
-      gt_output("summaryTable"), br(),
+      gt_output("summaryTable"), br()
 
       # Visualization
       # plotOutput("groupPlot")
@@ -298,14 +299,8 @@ server <- function(input, output, session) {
       )
 
     group_summary <- merge(group_summary, group_table) %>%
-      select(Domäne = group_name_de,Score, cutoff) |> 
+      select(Domäne = group_name_de, Domain = group_name_en, Score, cutoff) |> 
       mutate(colour_val = ifelse(Score > cutoff, color_values$bad, color_values$good)) # add colour red and green
-
-    if (input$language == "en") {
-      group_summary <- group_summary %>%
-        mutate(Domain = group_table$group_name_en) |>
-        select(-Domäne)
-    }
 
     group_summary |>
       mutate(
@@ -315,7 +310,8 @@ server <- function(input, output, session) {
       gt() |>
       gt_plt_bullet(column = percent, target = cutoff_perc,
           palette = c("gray", color_values$dark), palette_col = colour_val) |>
-      cols_label(cutoff = "Cut-off", percent = "")
+      cols_label(cutoff = "Cut-off", percent = "") |> 
+      cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
   })
 
   # Render plot
@@ -353,7 +349,7 @@ server <- function(input, output, session) {
   })
   
   output$information <- renderUI({
-    includeMarkdown("README.md")
+    page_fillable(includeMarkdown("README.md"), br())
   })
 }
 

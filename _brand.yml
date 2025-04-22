@@ -1,0 +1,45 @@
+color:
+  palette: 
+    white:    "#fff"
+    gray-100: "#f8f9fa"
+    gray-200: "#e9ecef"
+    gray-300: "#dee2e6"
+    gray-400: "#ced4da"
+    gray-500: "#adb5bd"
+    gray-600: "#868e96"
+    gray-700: "#495057"
+    gray-800: "#373a3c"
+    gray-900: "#212529"
+    black:    "#000"
+    blue:     "#53377f"
+    indigo:   "#6610f2"
+    purple:   "#613d7c"
+    pink:     "#e83e8c"
+    red:      "#ff0039"
+    orange:   "#f0ad4e"
+    yellow:   "#ff7518"
+    green:    "#3fb618"
+    teal:     "#20c997"
+    cyan:     "#9954bb"
+  primary:    blue
+  secondary:  gray-800
+  success:    green
+  info:       cyan
+  warning:    yellow
+  danger:     red
+  light:      gray-100
+  dark:       gray-800
+  
+typography:
+  fonts:
+    - family: Open Sans
+      source: bunny
+    - family: Source Code Pro
+      source: bunny
+  base: Open Sans
+  headings:
+    weight: light
+  monospace: Source Code Pro
+  
+defaults: 
+  shadows: TRUE
