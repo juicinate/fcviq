@@ -44,7 +44,8 @@ ui <- bslib::page_navbar(
       choices = c("Deutsch" = "de", "English" = "en"),
       selected = "de",
       width = "150px"
-    )),
+    )
+  ),
   nav_item(bslib::input_dark_mode()),
   id = "page"
 )
@@ -55,6 +56,9 @@ server <- function(input, output, session) {
 
   # Reactive value to store survey responses
   responses <- reactiveVal(NULL)
+
+  # Reactive value to store summary of responses
+  group_summary <- reactiveVal(NULL)
 
   # Load questions from RDS file on startup
   observe({
@@ -86,9 +90,9 @@ server <- function(input, output, session) {
       }
     )
   })
-  
+
   color_values <- data.frame(
-    good = "#00A600", bad = "#D93243", 
+    good = "#00A600", bad = "#D93243",
     bright = "#75BEBD", dark = "#5B3F79"
   )
 
@@ -116,7 +120,7 @@ server <- function(input, output, session) {
       "Anxiety-related behaviour"
     )
   )
-  
+
   output$questionsUI <- renderUI({
     req(questions_data())
 
@@ -148,9 +152,9 @@ server <- function(input, output, session) {
               } else {
                 c("No" = FALSE, "Yes" = TRUE)
               },
-              selected = NA, # change to NA for production, FALSE for testing
+              selected = ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
               inline = TRUE
-            ), 
+            ),
           )
         )
       }),
@@ -249,105 +253,121 @@ server <- function(input, output, session) {
     # Show notification
     submit_success <- if (input$language == "de") "Erfolgreich abgeschickt." else "Survey submitted successfully!"
     showNotification(submit_success, type = "message")
-  
+
     # show the results tab
     nav_select("page", "results")
-
   })
 
   # Render results
   output$resultsOutput <- renderUI({
     req(responses())
 
-    response_data <- responses()
+    responses_data <- responses()
 
     # Group analysis
-    group_summary <- response_data %>%
-      group_by(group) %>%
+    responses_summary <- responses_data |>
+      group_by(group) |>
+      filter(!is.na(group)) |>
       summarise(
-        yes_count = sum(response == TRUE),
-        total_count = n(),
-        score = round(yes_count / total_count, 1),
-        .groups = "drop"
+        score = round(sum(response == TRUE) / n(), 2)
       )
 
+    responses_summary <- merge(responses_summary, group_table) |>
+      mutate(colour_val = ifelse(score > cutoff, color_values$bad, color_values$good)) # add colour red and green
+
+    group_summary(responses_summary)
+
     # Create output elements
-    tagList(
+    tagList(page_fillable(
       h3("Ergebnisse"), br(),
 
+      layout_column_wrap(
       # Summary table
-      gt_output("summaryTable"), br()
+      uiOutput("summaryTable"), br(),
 
       # Visualization
-      # plotOutput("groupPlot")
-    )
+      card(plotOutput("groupPlot"),
+        min_height = 300, full_screen = TRUE
+      ),
+      width = "200px",
+      gap = "20px")
+    ))
   })
 
   # Render summary table
-  output$summaryTable <- render_gt({
-    req(responses())
+  output$summaryTable <- renderUI({
+    req(group_summary())
 
-    response_data <- responses()
+    group_summary_data <- group_summary()
 
-    # Group analysis
-    group_summary <- response_data %>%
-      filter(!is.na(group)) %>%
-      group_by(group) %>%
-      summarise(
-        `Score` = round(sum(response == TRUE) / n(), 1),
-        .groups = "drop"
-      )
+    # Column selection
+    group_summary_data <- group_summary_data |>
+      select(Domäne = group_name_de, Domain = group_name_en, score, cutoff)
 
-    group_summary <- merge(group_summary, group_table) %>%
-      select(Domäne = group_name_de, Domain = group_name_en, Score, cutoff) |> 
-      mutate(colour_val = ifelse(Score > cutoff, color_values$bad, color_values$good)) # add colour red and green
-
-    group_summary |>
-      mutate(
-        percent = Score * 100,
-        cutoff_perc = cutoff * 100
-      ) |>
+    gt_summary <- group_summary_data |>
       gt() |>
-      gt_plt_bullet(column = percent, target = cutoff_perc,
-          palette = c("gray", color_values$dark), palette_col = colour_val) |>
-      cols_label(cutoff = "Cut-off", percent = "") |> 
+      tab_options(table.width = pct(90)) |>
+      cols_label(cutoff = "Cut-off") |>
       cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
+
+    card(gt_summary, full_screen = TRUE, min_height = 300)
   })
 
   # Render plot
   output$groupPlot <- renderPlot({
-    req(responses())
+    req(group_summary())
 
-    response_data <- responses()
+    group_summary_data <- group_summary()
 
-    # Group analysis
-    group_summary <- response_data %>%
-      filter(!is.na(group)) %>%
-      group_by(group) %>%
-      summarise(
-        score = sum(response == TRUE) / n(),
-        .groups = "drop"
+    add_annotation <- function(summary_data) {
+      annotate(
+        geom = "rect",
+        fill = brand$color$palette$green,
+        alpha = 0.15,
+        xmin = 0,
+        xmax = cutoff,
+        ymin = group - 0.1,
+        ymax = group + 0.1
+      ) +
+        annotate(
+          geom = "rect",
+          fill = brand$color$palette$red,
+          alpha = 0.15,
+          xmin = cutoff,
+          xmax = 1,
+          ymin = group - 0.1,
+          ymax = group + 0.1
+        )
+    }
+
+    gg_summary <- ggplot(
+      group_summary_data,
+      aes(
+        x = score,
+        y = group,
+        fill = colour_val
       )
-
-    group_summary <- merge(group_summary, group_table) |> group_by(group)
-    # write_rds(group_summary, "group.rds")
-
-    ggplot(group_summary, aes(
-      x = group,
-      y = score,
-      fill = group
-    )) +
-      geom_col() +
-      geom_text(aes(label = paste0(round(score, 1))), vjust = -0.5) +
+    ) +
+      geom_col(width = 0.25) +
+      geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), linewidth = 0.8) +
+      geom_text(aes(x = 1.1, label = paste0(round(score, 2))), hjust = 1) +
       labs(title = "Group Scores (Percentage of 'Yes' Answers)", x = "Group", y = "Score") +
+      scale_y_discrete(limits = rev) +
+      scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.1)) +
       theme_minimal() +
       theme(
-        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(vjust = 1),
         legend.position = "none"
-      ) +
-      ylim(0, 1.1) # Add some space for labels
+      )
+
+    gg_summary +
+      facet_wrap(ggplot2::vars(group), ncol = 1, scales = "free_y") +
+      theme(
+        strip.text = element_blank(),
+        strip.background = element_blank()
+      )
   })
-  
+
   output$information <- renderUI({
     page_fillable(includeMarkdown("README.md"), br())
   })
