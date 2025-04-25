@@ -61,7 +61,7 @@ server <- function(input, output, session) {
   group_summary <- reactiveVal(NULL)
 
   # devmode()
- 
+
   session$allowReconnect(TRUE)
 
   # Load questions from RDS file on startup
@@ -308,7 +308,7 @@ server <- function(input, output, session) {
       select(Domäne = group_name_de, Domain = group_name_en, score, cutoff)
 
     gt_summary <- group_summary_data |>
-      gt() |> 
+      gt() |>
       tab_options(table.width = pct(90)) |>
       cols_label(score = "Score", cutoff = "Cut-off") |>
       cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
@@ -333,7 +333,7 @@ server <- function(input, output, session) {
         fill = color_val
       )
     ) +
-      annotate("rect", xmin = 0, xmax =  1, ymin = 0.6, ymax = 1.4, fill = "grey90") +
+      annotate("rect", xmin = 0, xmax = 1, ymin = 0.6, ymax = 1.4, fill = "grey90") +
       geom_col(width = 0.3) +
       geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), colour = "grey50", linewidth = 0.8) +
       geom_text(aes(x = 1.1, label = paste0(round(score, 2))), hjust = 1) +
@@ -343,7 +343,6 @@ server <- function(input, output, session) {
       theme(
         axis.text = element_text(size = 16, vjust = 0.5),
         legend.position = "none"
-        
       )
 
     gg_summary +
