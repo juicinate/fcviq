@@ -163,7 +163,7 @@ server <- function(input, output, session) {
         )
       }),
       br(),
-      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
+      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"), 
       br()
     )
   })
@@ -293,7 +293,8 @@ server <- function(input, output, session) {
           min_height = 300, full_screen = TRUE
         ),
         width = "450px"
-      )
+      ),
+      br(), actionButton("reset", "Neu ausfüllen", class = "btn-warn")
     ))
   })
 
@@ -352,6 +353,12 @@ server <- function(input, output, session) {
         strip.text = element_blank(),
         strip.background = element_blank()
       )
+  })
+
+  observeEvent(input$reset, {
+      req(responses())
+
+      
   })
 
   output$information <- renderUI({
