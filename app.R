@@ -1,8 +1,8 @@
 # FCVIQ ------
 # An interactive Version of the Flemish CVI Questionnaire.
 
-# Version 1.0
-# Last updated: 19.04.2025
+# Version 1.1
+# Last updated: 25.04.2025
 
 # Copyright (C) 2025  J. Corazolla
 # https://github.com/juicinate
@@ -59,6 +59,8 @@ server <- function(input, output, session) {
 
   # Reactive value to store summary of responses
   group_summary <- reactiveVal(NULL)
+
+  # devmode()
 
   # Load questions from RDS file on startup
   observe({
@@ -152,7 +154,7 @@ server <- function(input, output, session) {
               } else {
                 c("No" = FALSE, "Yes" = TRUE)
               },
-              selected = ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
+              selected = NA, # ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
               inline = TRUE
             ),
           )
@@ -273,24 +275,23 @@ server <- function(input, output, session) {
       )
 
     responses_summary <- merge(responses_summary, group_table) |>
-      mutate(colour_val = ifelse(score > cutoff, color_values$bad, color_values$good)) # add colour red and green
+      mutate(color_val = ifelse(score <= cutoff, color_values$bad, color_values$good)) # add colour red and green
 
     group_summary(responses_summary)
 
     # Create output elements
     tagList(page_fillable(
       h3("Ergebnisse"), br(),
-
       layout_column_wrap(
-      # Summary table
-      uiOutput("summaryTable"), br(),
+        # Summary table
+        uiOutput("summaryTable"),
 
-      # Visualization
-      card(plotOutput("groupPlot"),
-        min_height = 300, full_screen = TRUE
-      ),
-      width = "200px",
-      gap = "20px")
+        # Visualization
+        card(plotOutput("groupPlot"),
+          min_height = 300, full_screen = TRUE
+        ),
+        width = "450px"
+      )
     ))
   })
 
@@ -305,9 +306,9 @@ server <- function(input, output, session) {
       select(Domäne = group_name_de, Domain = group_name_en, score, cutoff)
 
     gt_summary <- group_summary_data |>
-      gt() |>
+      gt() |> 
       tab_options(table.width = pct(90)) |>
-      cols_label(cutoff = "Cut-off") |>
+      cols_label(score = "Score", cutoff = "Cut-off") |>
       cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
 
     card(gt_summary, full_screen = TRUE, min_height = 300)
@@ -318,50 +319,33 @@ server <- function(input, output, session) {
     req(group_summary())
 
     group_summary_data <- group_summary()
-
-    add_annotation <- function(summary_data) {
-      annotate(
-        geom = "rect",
-        fill = brand$color$palette$green,
-        alpha = 0.15,
-        xmin = 0,
-        xmax = cutoff,
-        ymin = group - 0.1,
-        ymax = group + 0.1
-      ) +
-        annotate(
-          geom = "rect",
-          fill = brand$color$palette$red,
-          alpha = 0.15,
-          xmin = cutoff,
-          xmax = 1,
-          ymin = group - 0.1,
-          ymax = group + 0.1
-        )
-    }
+    if (in_devmode() == TRUE) saveRDS(group_summary_data, "group.rds")
 
     gg_summary <- ggplot(
-      group_summary_data,
+      data =
+        group_summary_data |>
+          select(score, color_val, cutoff, group, group_name = ifelse(input$language == "de", "group_name_de", "group_name_en")),
       aes(
         x = score,
-        y = group,
-        fill = colour_val
+        y = reorder(factor(group_name), group),
+        fill = color_val
       )
     ) +
-      geom_col(width = 0.25) +
-      geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), linewidth = 0.8) +
+      annotate("rect", xmin = 0, xmax =  1, ymin = 0.6, ymax = 1.4, fill = "grey90") +
+      geom_col(width = 0.3) +
+      geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), colour = "grey50", linewidth = 0.8) +
       geom_text(aes(x = 1.1, label = paste0(round(score, 2))), hjust = 1) +
-      labs(title = "Group Scores (Percentage of 'Yes' Answers)", x = "Group", y = "Score") +
-      scale_y_discrete(limits = rev) +
       scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.1)) +
-      theme_minimal() +
+      labs(x = "Score", y = element_blank()) +
+      theme_void() +
       theme(
-        axis.text.y = element_text(vjust = 1),
+        axis.text = element_text(size = 16, vjust = 0.5),
         legend.position = "none"
+        
       )
 
     gg_summary +
-      facet_wrap(ggplot2::vars(group), ncol = 1, scales = "free_y") +
+      facet_wrap(vars(group_name), ncol = 1, scales = "free_y") +
       theme(
         strip.text = element_blank(),
         strip.background = element_blank()
