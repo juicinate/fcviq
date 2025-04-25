@@ -308,7 +308,7 @@ server <- function(input, output, session) {
       select(Domäne = group_name_de, Domain = group_name_en, score, cutoff)
 
     gt_summary <- group_summary_data |>
-      gt() |>
+      gt() |> 
       tab_options(table.width = pct(90)) |>
       cols_label(score = "Score", cutoff = "Cut-off") |>
       cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
@@ -343,6 +343,7 @@ server <- function(input, output, session) {
       theme(
         axis.text = element_text(size = 16, vjust = 0.5),
         legend.position = "none"
+        
       )
 
     gg_summary +
