@@ -198,13 +198,11 @@ server <- function(input, output, session) {
                 selected = NA, # ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
                 inline = TRUE
               )
-            )))
-          )
-        }),
-        hr(),
-        actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
-      )
-    )
+            ))
+            ))  
+      }),
+      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"), 
+      ))
   })
 
   # Handle submission
@@ -329,7 +327,8 @@ server <- function(input, output, session) {
           min_height = 300, full_screen = TRUE
         ),
         width = "450px"
-      )
+      ),
+      br(), actionButton("reset", "Neu ausfüllen", class = "btn-warn")
     ))
   })
 
@@ -392,6 +391,12 @@ server <- function(input, output, session) {
         strip.text = element_blank(),
         strip.background = element_blank()
       )
+  })
+
+  observeEvent(input$reset, {
+      req(responses())
+
+      
   })
 
   output$information <- renderUI({
