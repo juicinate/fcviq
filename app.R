@@ -29,30 +29,40 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 
-ui <- bslib::page_navbar(
+ui <- bslib::page_fillable(
   useShinyjs(),
-  theme = bs_theme(version = 5),
+  theme = bs_theme(version = 5, `enable-shadows` = TRUE),
   title = "Flemish CVI Questionnaire (FCVIQ)",
-  nav_panel("FCVIQ", uiOutput("questionsUI"), value = "input"),
-  nav_panel("Auswertung", uiOutput("resultsOutput"), value = "results"),
-  nav_panel("Info", uiOutput("information"), value = "info"),
-  nav_spacer(),
-  nav_item(
-    selectInput(
-      inputId = "language",
-      label = NULL,
-      choices = c("Deutsch" = "de", "English" = "en"),
-      selected = "de",
-      width = "150px"
-    )
-  ),
-  nav_item(bslib::input_dark_mode()),
-  id = "page"
+  navset_pill(
+    nav_panel("FCVIQ", uiOutput("questionsUI"), value = "input"),
+    nav_panel("Auswertung", uiOutput("resultsOutput"), value = "results"),
+    nav_panel("Info", uiOutput("information"), value = "info"),
+    nav_spacer(),
+    nav_item(
+      selectInput(
+        inputId = "language",
+        label = NULL,
+        choices = c("Deutsch" = "de", "English" = "en"),
+        selected = "de",
+        width = "150px"
+      )
+    ),
+    nav_item(
+      div(
+        style = "padding: 10px;",
+        input_dark_mode(style = css("--vertical-correction" = "-10px"))
+      )
+    ),
+    id = "page"
+  )
 )
 
 server <- function(input, output, session) {
   # Reactive value to store the questions data
   questions_data <- reactiveVal(NULL)
+
+  color_values <- reactiveVal(NULL)
+  group_table <- reactiveVal(NULL)
 
   # Reactive value to store survey responses
   responses <- reactiveVal(NULL)
@@ -95,76 +105,105 @@ server <- function(input, output, session) {
     )
   })
 
-  color_values <- data.frame(
-    good = "#00A600", bad = "#D93243",
-    bright = "#75BEBD", dark = "#5B3F79"
-  )
 
-  group_table <- data.frame(
-    group = 1:5,
-    cutoff = c(
-      0.27,
-      0.30,
-      0.32,
-      0.46,
-      0.30
-    ),
-    group_name_de = c(
-      "Objekt- und Gesichtserkennung",
-      "Visuelles Interesse",
-      "Crowding und visueller Überblick",
-      "Fortbewegung im Raum",
-      "Angstbezogenes Verhalten"
-    ),
-    group_name_en = c(
-      "Object and face recognition",
-      "Visual interest",
-      "Clutter and distance viewing",
-      "Moving in space",
-      "Anxiety-related behaviour"
+  observe({
+    color_values <- data.frame(
+      good = "#00A600", bad = "#D93243",
+      bright = "#75BEBD", dark = "#5B3F79"
     )
-  )
+
+    color_values(color_values)
+
+    group_table <- data.frame(
+      group = 1:5,
+      cutoff = c(
+        0.27,
+        0.30,
+        0.32,
+        0.46,
+        0.30
+      )
+    )
+
+    if (input$language == "de") {
+      group_table$group_name <- c(
+        "Objekt- und Gesichtserkennung",
+        "Visuelles Interesse",
+        "Crowding und visueller Überblick",
+        "Fortbewegung im Raum",
+        "Angstbezogenes Verhalten"
+      )
+    } else {
+      group_table$group_name <- c(
+        "Object and face recognition",
+        "Visual interest",
+        "Clutter and distance viewing",
+        "Moving in space",
+        "Anxiety-related behaviour"
+      )
+    }
+
+    group_table(group_table)
+  })
+
 
   output$questionsUI <- renderUI({
     req(questions_data())
 
     questions <- questions_data()
 
-    page_fillable(
-      # Add a div to show error message for unanswered questions
-      div(id = "error-message", style = "color: red; margin-bottom: 15px; display: none;"),
-      lapply(1:nrow(questions), function(i) {
-        question_id <- questions$id[i]
-        # Get question text based on selected language
-        question_text <- questions$question_de[i]
+    if (input$language == "de") {
+      title_text <- "Flämischer CVI Fragebogen"
+      explainer <- "Bitte wählen Sie alle Antworten aus,
+      die auf ihr Kind zutreffen. "
+    } else {
+      title_text <- "Flemish CVI Questionnaire"
+      explainer <- "Please answer all the following questions.
+      Tick yes if the questions applies to your child."
+    }
 
-        if (input$language == "en") {
-          question_text <- questions$question_en[i]
-        }
+    page_fluid(
+      # Add an explainer above the questions
+      card(
+        height = pct(100),
+        card_title(title_text),
+        h6(explainer),
+        lapply(seq_len(nrow(questions)), function(i) {
+          question_id <- questions$id[i]
+          # Get question text based on selected language
+          question_text <- questions$question_de[i]
 
-        div(
-          id = paste0("question_container_", question_id),
-          class = "question-container",
-          style = "padding: 10px; margin-bottom: 10px; border-left: 4px solid transparent; border-top: 2px solid grey",
-          tagList(
-            h6(paste0(i, ": ", question_text)),
-            radioButtons(
-              inputId = paste0("q_", question_id),
-              label = NULL,
-              choices = if (input$language == "de") {
-                c("Trifft nicht zu" = FALSE, "Trifft zu" = TRUE)
-              } else {
-                c("No" = FALSE, "Yes" = TRUE)
-              },
-              selected = NA, # ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
-              inline = TRUE
-            ),
+          if (input$language == "en") {
+            question_text <- questions$question_en[i]
+          }
+
+          div(
+            id = paste0("question_container_", question_id),
+            class = "question-container",
+            style = "padding: 10px;  border-left: 4px solid transparent;
+            border-top: 2px solid grey",
+            tagList(fluidRow(column(
+              width = 8,
+              h6(paste0(i, ": ", question_text))
+            ), column(
+              width = 4,
+              radioButtons(
+                inputId = paste0("q_", question_id),
+                label = NULL,
+                choices = if (input$language == "de") {
+                  c("Trifft nicht zu" = FALSE, "Trifft zu" = TRUE)
+                } else {
+                  c("No" = FALSE, "Yes" = TRUE)
+                },
+                selected = NA, # ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
+                inline = TRUE
+              )
+            )))
           )
-        )
-      }),
-      br(),
-      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
-      br()
+        }),
+        hr(),
+        actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
+      )
     )
   })
 
@@ -187,12 +226,12 @@ server <- function(input, output, session) {
     unanswered_questions <- c()
 
     # Reset all question container styles first
-    for (i in 1:nrow(questions)) {
+    for (i in seq_len(nrow(questions))) {
       question_id <- questions$id[i]
       runjs(sprintf("document.getElementById('question_container_%s').style.borderLeft = '4px solid transparent';", question_id))
     }
 
-    for (i in 1:nrow(questions)) {
+    for (i in seq_len(nrow(questions))) {
       question_id <- questions$id[i]
       input_id <- paste0("q_", question_id)
 
@@ -219,27 +258,18 @@ server <- function(input, output, session) {
     if (!all_answered) {
       # Show error message with specific question numbers
       error_message <- if (input$language == "de") {
-        sprintf(
-          "Bitte beantworten Sie alle Fragen. Fehlende Fragen: %s",
+        paste0(
+          "Bitte beantworten Sie alle Fragen. Fehlende Fragen: ",
           paste(unanswered_questions, collapse = ", ")
         )
       } else {
-        sprintf(
-          "Please answer all questions. Missing questions: %s",
+        paste0(
+          "Please answer all questions. Missing questions: ",
           paste(unanswered_questions, collapse = ", ")
         )
       }
-
-      runjs(sprintf("
-        document.getElementById('error-message').innerText = '%s';
-        document.getElementById('error-message').style.display = 'block';
-        document.getElementById('error-message').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      ", error_message))
-
+      showNotification(error_message, type = "warning")
       return()
-    } else {
-      # Hide error message if all questions are answered
-      runjs("document.getElementById('error-message').style.display = 'none';")
     }
 
     # Process multiple groups
@@ -255,7 +285,11 @@ server <- function(input, output, session) {
     responses(processed_responses)
 
     # Show notification
-    submit_success <- if (input$language == "de") "Erfolgreich abgeschickt." else "Survey submitted successfully!"
+    submit_success <- if (input$language == "de") {
+      "Erfolgreich abgeschickt."
+    } else {
+      "Survey submitted successfully!"
+    }
     showNotification(submit_success, type = "message")
 
     # show the results tab
@@ -267,6 +301,8 @@ server <- function(input, output, session) {
     req(responses())
 
     responses_data <- responses()
+    group_table <- group_table()
+    color_values <- color_values()
 
     # Group analysis
     responses_summary <- responses_data |>
@@ -305,13 +341,15 @@ server <- function(input, output, session) {
 
     # Column selection
     group_summary_data <- group_summary_data |>
-      select(Domäne = group_name_de, Domain = group_name_en, score, cutoff)
+      select(group_name, score, cutoff)
 
     gt_summary <- group_summary_data |>
-      gt() |> 
+      gt() |>
       tab_options(table.width = pct(90)) |>
-      cols_label(score = "Score", cutoff = "Cut-off") |>
-      cols_hide(ifelse(input$language == "de", "Domain", "Domäne"))
+      cols_label(
+        group_name = ifelse(input$language == "de", "Domäne", "Domain"),
+        score = "Score", cutoff = "Cut-off"
+      )
 
     card(gt_summary, full_screen = TRUE, min_height = 300)
   })
@@ -323,13 +361,15 @@ server <- function(input, output, session) {
     group_summary_data <- group_summary()
     if (in_devmode() == TRUE) saveRDS(group_summary_data, "group.rds")
 
+    factor_levels <- unique(group_summary_data$group_name)
+
     gg_summary <- ggplot(
       data =
         group_summary_data |>
-          select(score, color_val, cutoff, group, group_name = ifelse(input$language == "de", "group_name_de", "group_name_en")),
+          select(score, color_val, cutoff, group_name),
       aes(
         x = score,
-        y = reorder(factor(group_name), group),
+        y = factor(group_name, levels = factor_levels),
         fill = color_val
       )
     ) +
@@ -338,12 +378,12 @@ server <- function(input, output, session) {
       geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), colour = "grey50", linewidth = 0.8) +
       geom_text(aes(x = 1.1, label = paste0(round(score, 2))), hjust = 1) +
       scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.1)) +
-      labs(x = "Score", y = element_blank()) +
+      scale_y_discrete(limits = rev) +
       theme_void() +
+      labs(x = "Score", y = element_blank()) +
       theme(
         axis.text = element_text(size = 16, vjust = 0.5),
         legend.position = "none"
-        
       )
 
     gg_summary +
@@ -355,7 +395,12 @@ server <- function(input, output, session) {
   })
 
   output$information <- renderUI({
-    page_fillable(includeMarkdown("README.md"), br())
+    page_fillable(
+      card(
+        style = "margin-bottom: 20px;",
+        includeMarkdown("README.md")
+      )
+    )
   })
 }
 
