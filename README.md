@@ -5,7 +5,7 @@ An interactive version of the Flemish CVI Questionnaire.
 
 Version 1.1
 
-Last updated: 25.04.2025
+Last updated: 01.05.2025
 
 ### Was ist das?
 
