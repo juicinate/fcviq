@@ -21,11 +21,21 @@ Aktuell werden nur die 35 der 46 Fragen ausgewertet, die auch im Paper von Ben I
 - Appendix 1 ist der originale Fragebogen (auf Englisch)
 - Table S3 stellt die Zuordnung der Fragen zu den jeweiligen Faktoren dar
 
-**Die eingetragenen Daten werden nicht gesichert. Nach 15 Minuten Inaktivität sind die Eingaben gelöscht.**
+**Die eingetragenen Daten werden nicht gesichert. Nach 15 Minuten Inaktivität sind die Eingaben gelöscht. Ein PDF Report kann erzeugt werden.**
+
+### Changes
+
+v1.2
+
+- added PDF report
+- added optional patient data inputs for report
+- added session reset button
 
 ### Links
 
 [Github](https://github.com/juicinate/fcviq)
+
+[Live Demo](https://juicinate.shinyapps.io/fcviq)
 
 ### Quellen / References
 
