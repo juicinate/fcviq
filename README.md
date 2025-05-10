@@ -3,7 +3,8 @@ Eine interaktive Version des Flämischen CVI Fragebogen.
 
 An interactive version of the Flemish CVI Questionnaire.
 
-| Version 1.1 | Last updated: 01.05.2025 | 
+Version 1.2
+Last updated: 10.05.2025 
 
 ### Was ist das?
 

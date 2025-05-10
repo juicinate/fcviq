@@ -1,0 +1,232 @@
+---
+format: 
+  pdf:
+    pdf-engine: lualatex
+    documentclass: article
+    mainfont: "Open Sans"
+    papersize: A4
+    number-sections: false
+    margin-left: 2cm
+    margin-right: 2cm
+    margin-top: 2cm
+    margin-bottom: 2cm
+    fontsize: "12"
+    linestretch: 1.25
+    include-in-header: 
+      text: '\pagenumbering{gobble}'
+
+execute: 
+  echo: false
+  freeze: auto
+    
+lang: "`r params$report_language`"
+
+params:
+  questions: NULL
+  responses: NULL
+  group_summary: NULL
+  patient: NULL
+  date: NULL
+  report_language: NULL
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# Version 1.2
+# Updated 10.05.2025
+
+library(ggplot2)
+library(dplyr)
+library(flextable)
+
+# Access the data frames from parameters
+patient_data       <- as.list(params$patient)
+question_data      <- as.data.frame(params$questions)
+response_data      <- as.data.frame(params$responses)
+group_summary_data <- as.data.frame(params$group_summary)
+report_lang        <- as.character(params$report_language)
+```
+
+```{r}
+#| label: Eingaben auswerten
+#| include: true
+
+birth_date <- patient_data$birth_date 
+birth_date <- format.Date(as.Date(birth_date), format = "%d.%m.%Y")
+fill_date  <- patient_data$fill_date
+fill_date  <- format.Date(as.Date(fill_date), format = "%d.%m.%Y")
+age        <- patient_data$age
+surname    <- patient_data$surname
+name       <- patient_data$name
+filled_by  <- patient_data$filled_by
+years      <- patient_data$age$years
+months     <- patient_data$age$months
+days       <- patient_data$age$days
+
+print_date <- format.Date(Sys.Date(), format = "%d.%m.%Y")
+```
+
+```{=latex}
+
+\begin{center}
+\Large\bfseries FCVIQ Report
+\end{center}
+\vspace {2.5em}
+```
+
+```{r}
+#| label: Patientendaten eintragen
+
+age_label <- paste0(years, " Jahre, ", months, " Monate")
+
+if (months == 1) {
+  age_label <- paste0(years, " Jahre, ", months, " Monat")
+}
+
+pat_mat <- matrix(
+  data = c(
+    "Name:", paste0(surname, ", ", name),
+    "Geburtsdatum:", birth_date,
+    "Aufgefüllt von:", filled_by,
+    "Testdatum:", fill_date,
+    "Bericht erstellt:", print_date,
+    "Alter:", age_label
+  ),
+  nrow = 3, byrow = TRUE
+)
+
+pat_mat <- as.data.frame(pat_mat)
+
+flextable(pat_mat) |>
+  set_table_properties(layout = "fixed") |>
+  width(j = 1:4, width = c(3, 7, 3, 4), unit = "cm") |>
+  delete_part("header") |>
+  theme_zebra()
+```
+
+`\vspace {2em}`{=latex}
+
+```{r}
+#| label: Tabelle erzeugen
+#| echo: false
+
+group_lab <- ifelse(report_lang == "de", "Domäne", "Domain")
+
+summary_table_data <- group_summary_data |>
+  dplyr::select(group_name, score, cutoff)
+
+colnames(summary_table_data) <- c(
+  group_lab,
+  "Score",
+  "Cut-off"
+)
+
+flextable(summary_table_data) |>
+  set_table_properties(layout = "fixed") |>
+  width(j = c(1:3), width = c(10, 3.5, 3.5), unit = "cm") |>
+  theme_zebra()
+```
+
+`\vspace {2em}`{=latex}
+
+```{r}
+#| label: Visualisieren
+#| fig-align: center
+#| out-width: "100%"
+#| fig-height: 3
+#| fig-width: 7
+
+factor_levels <- unique(group_summary_data$group_name)
+
+gg_summary <- ggplot(
+  data =
+    group_summary_data |>
+      select(score, color_val, cutoff, group_name),
+  aes(
+    x = score,
+    y = factor(group_name, levels = factor_levels),
+    fill = color_val
+  )
+) +
+  annotate("rect", xmin = 0, xmax = 1, ymin = 0.6, ymax = 1.4, fill = "grey90") +
+  geom_col(width = 0.3) +
+  geom_segment(
+    aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3),
+    colour = "grey50", linewidth = 0.8
+  ) +
+  geom_text(aes(x = 1.2, label = paste0(round(score, 2))), hjust = 1) +
+  scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.2)) +
+  scale_y_discrete(limits = rev) +
+  theme_void() +
+  labs(x = "Score", y = element_blank()) +
+  theme(
+    axis.text = element_text(vjust = 0.5),
+    legend.position = "none"
+  )
+
+gg_summary +
+  facet_wrap(ggplot2::vars(group_name = factor(group_name, levels = factor_levels)), ncol = 1, scales = "free_y") +
+  theme(
+    strip.text = element_blank(),
+    strip.background = element_blank()
+  )
+```
+
+```{=latex}
+
+\vfill 
+\noindent FCVIQ Application and Report \hfill  
+\copyright{} 2025 J. Corazolla 
+```
+
+{{< pagebreak >}}
+
+```{r}
+#| label: Print responses
+
+responses_table_data <- left_join(question_data, response_data, by = c("id"))
+
+class(responses_table_data$group) <- character()
+
+responses_table_data$group <- dplyr::na_if(responses_table_data$group, ".na.character")
+
+if (report_lang == "de") {
+  responses_table_data <- responses_table_data |>
+    dplyr::select(id, question_de, response, group) |>
+    rename(
+      " " = id,
+      "Frage" = question_de,
+      "Domäne" = group
+    ) |>
+    dplyr::mutate(
+      Antwort = if_else(response == TRUE, "Trifft zu", "Trifft nicht zu"),
+      .before = Domäne
+    ) |>
+    dplyr::select(!response)
+} else {
+  responses_table_data <- responses_table_data |>
+    dplyr::select(id, question_en, response, group) |>
+    rename(
+      " " = id,
+      "Frage" = question_en,
+      "Domain" = group
+    ) |>
+    mutate(
+      Answer = if_else(response == TRUE, "Yes", "No"),
+      .before = Domain
+    ) |>
+    dplyr::select(!response)
+}
+
+set_flextable_defaults(na_str = " ")
+
+flextable(responses_table_data) |>
+  set_table_properties(layout = "fixed") |>
+  fontsize(part = "all", size = 10) |>
+  width(j = c(1:4), width = c(0.9, 11.8, 2.5, 1.8), unit = "cm") |>
+  valign(valign = "top", part = "body") |> 
+  flextable::theme_zebra()
+```
+

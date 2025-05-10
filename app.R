@@ -1,8 +1,8 @@
 # FCVIQ ------
 # An interactive Version of the Flemish CVI Questionnaire.
 
-# Version 1.1
-# Last updated: 25.04.2025
+# Version 1.2
+# Last updated: 10.05.2025
 
 # Copyright (C) 2025  J. Corazolla
 # https://github.com/juicinate
@@ -20,6 +20,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
 
+# Load libraries ------
 library(shiny)
 library(shinyjs)
 library(bslib)
@@ -28,7 +29,15 @@ library(tidyr)
 library(ggplot2)
 library(gt)
 library(gtExtras)
+library(quarto)
 
+# Source utilities ------
+source("utils.R")
+
+# Set temorary directory for quarto ------
+tempDir <- prepare_report()
+
+# Define UI  ------
 ui <- bslib::page_fillable(
   useShinyjs(),
   theme = bs_theme(version = 5, `enable-shadows` = TRUE),
@@ -61,7 +70,20 @@ server <- function(input, output, session) {
   # Reactive value to store the questions data
   questions_data <- reactiveVal(NULL)
 
+  # Reactive value to store the patient data
+  patient_data <- reactiveValues(
+    birth_date   = NULL,
+    fill_date    = NULL,
+    age          = NULL,
+    surname      = NULL,
+    name         = NULL,
+    filled_by    = NULL
+  )
+
+  # Reactive value to store the color values (over or under cut-off)
   color_values <- reactiveVal(NULL)
+
+  # Reactive value to store the table for outputs
   group_table <- reactiveVal(NULL)
 
   # Reactive value to store survey responses
@@ -70,11 +92,9 @@ server <- function(input, output, session) {
   # Reactive value to store summary of responses
   group_summary <- reactiveVal(NULL)
 
-  # devmode()
-
   session$allowReconnect(TRUE)
 
-  # Load questions from RDS file on startup
+  # Load questions from RDS file on startup and observe patient data inputs
   observe({
     tryCatch(
       {
@@ -155,19 +175,45 @@ server <- function(input, output, session) {
     if (input$language == "de") {
       title_text <- "Flämischer CVI Fragebogen"
       explainer <- "Bitte wählen Sie alle Antworten aus,
-      die auf ihr Kind zutreffen. "
+      die auf Ihr Kind zutreffen."
     } else {
       title_text <- "Flemish CVI Questionnaire"
       explainer <- "Please answer all the following questions.
-      Tick yes if the questions applies to your child."
+      Tick yes if the question applies to your child."
     }
 
     page_fluid(
-      # Add an explainer above the questions
       card(
         height = pct(100),
         card_title(title_text),
+
+        # add a card for patient data
+        card(
+          card_header("Patientendaten"),
+          fluidRow(
+            textInput("surname", "Nachname:"),
+            textInput("name", "Vorname:")
+          ),
+          fluidRow(
+            dateInput("birthdate", "Geburtsdatum:",
+              value = "2023-02-01",
+              format = "dd-mm-yyyy", max = Sys.Date(),
+              startview = "decade", weekstart = 1
+            ),
+            dateInput("filldate", "Ausgefüllt am:",
+              value = Sys.Date(),
+              format = "dd-mm-yyyy", max = Sys.Date(), weekstart = 1
+            )
+          ), textOutput("output_age"),
+          fluidRow(
+            textInput("filled_by", "Ausgefüllt von:", placeholder = "Mutter, Vater, Betreuer...")
+          )
+        ),
+
+        # Add an explainer above the questions
         h6(explainer),
+
+        # Add questions
         lapply(seq_len(nrow(questions)), function(i) {
           question_id <- questions$id[i]
           # Get question text based on selected language
@@ -195,14 +241,15 @@ server <- function(input, output, session) {
                 } else {
                   c("No" = FALSE, "Yes" = TRUE)
                 },
-                selected = NA, # ifelse(question_id %% 2 == 0, TRUE, FALSE), # change to NA for production, FALSE for testing
-                inline = TRUE
+                inline = TRUE,
+                selected = NA # ifelse(question_id %% 2 == 0, TRUE, FALSE) # change to NA for production, FALSE for testing
               )
-            ))
-            ))  
-      }),
-      actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"), 
-      ))
+            )))
+          )
+        }),
+        actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
+      )
+    )
   })
 
   # Handle submission
@@ -282,6 +329,16 @@ server <- function(input, output, session) {
     # Save responses
     responses(processed_responses)
 
+    # Store all patient values for later use
+    patient_data$birth_date <- input$birthdate
+    patient_data$fill_date <- input$filldate
+    patient_data$surname <- input$surname
+    patient_data$name <- input$name
+    patient_data$filled_by <- input$filled_by
+    patient_data$age <- calculate_age(
+      patient_data$birth_date, patient_data$fill_date
+    )
+
     # Show notification
     submit_success <- if (input$language == "de") {
       "Erfolgreich abgeschickt."
@@ -319,6 +376,9 @@ server <- function(input, output, session) {
     tagList(page_fillable(
       h3("Ergebnisse"), br(),
       layout_column_wrap(
+        # Patient data
+        uiOutput("patientOutput"),
+
         # Summary table
         uiOutput("summaryTable"),
 
@@ -328,10 +388,46 @@ server <- function(input, output, session) {
         ),
         width = "450px"
       ),
-      br(), actionButton("reset", "Neu ausfüllen", class = "btn-warn")
+      br(),
+      actionButton("reset", "Neu ausfüllen", class = "btn-warning"),
+      downloadButton("download_pdf", "PDF Report",
+        icon = icon("save"), class = "btn-primary", stlye = "float: right;"
+      )
     ))
   })
 
+  # Render patient data table
+  output$patientOutput <- renderUI({
+    
+    patient_info <- reactiveValuesToList(patient_data)
+    
+    age_label <- paste0(patient_info$age$years, " Jahre, ", patient_info$age$months, " Monate")
+    
+    if (patient_info$age$months == 1) {
+      age_label <- paste0(patient_info$age$years, " Jahre, ", patient_info$age$months, " Monat")
+    }
+    
+    pat_mat <- matrix(
+      data = c(
+        "Name:", paste0(patient_info$surname, ", ", patient_info$name),
+        "Geburtsdatum:", patient_info$birth_date,
+        "Aufgefüllt von:", patient_info$filled_by,
+        "Testdatum:", patient_info$fill_date,
+        "Alter:", age_label
+      ),
+      nrow = 5, byrow = TRUE
+    )
+    
+    gt_summary <- as.data.frame(pat_mat) |>
+      gt() |>
+      tab_options(
+        table.width = pct(90),
+        column_labels.hidden = TRUE
+        )
+    
+    card(gt_summary, full_screen = FALSE, min_height = 300)
+  })
+  
   # Render summary table
   output$summaryTable <- renderUI({
     req(group_summary())
@@ -358,7 +454,6 @@ server <- function(input, output, session) {
     req(group_summary())
 
     group_summary_data <- group_summary()
-    if (in_devmode() == TRUE) saveRDS(group_summary_data, "group.rds")
 
     factor_levels <- unique(group_summary_data$group_name)
 
@@ -375,18 +470,20 @@ server <- function(input, output, session) {
       annotate("rect", xmin = 0, xmax = 1, ymin = 0.6, ymax = 1.4, fill = "grey90") +
       geom_col(width = 0.3) +
       geom_segment(aes(x = cutoff, xend = cutoff, y = 0.7, yend = 1.3), colour = "grey50", linewidth = 0.8) +
-      geom_text(aes(x = 1.1, label = paste0(round(score, 2))), hjust = 1) +
-      scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.1)) +
+      geom_text(aes(x = 1.2, label = paste0(round(score, 2))), hjust = 1) +
+      scale_x_continuous(breaks = c(seq(0, 1, length.out = 6)), limits = c(0, 1.2)) +
       scale_y_discrete(limits = rev) +
-      theme_void() +
+      theme_void(base_size = 14, base_family = "Open Sans") +
       labs(x = "Score", y = element_blank()) +
       theme(
-        axis.text = element_text(size = 16, vjust = 0.5),
+        axis.text.y = element_text(vjust = 0.5),
         legend.position = "none"
       )
 
     gg_summary +
-      facet_wrap(vars(group_name), ncol = 1, scales = "free_y") +
+      facet_wrap(vars(group_name = factor(group_name, levels = factor_levels)),
+        ncol = 1, scales = "free_y"
+      ) +
       theme(
         strip.text = element_blank(),
         strip.background = element_blank()
@@ -394,9 +491,12 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$reset, {
-      req(responses())
+    req(responses())
 
-      
+    on.exit(
+      nav_select("page", "input"))
+    
+    session$reload()
   })
 
   output$information <- renderUI({
@@ -407,6 +507,58 @@ server <- function(input, output, session) {
       )
     )
   })
+
+  output$download_pdf <- downloadHandler(
+    filename = function() {
+      paste0("report-", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      # Get the current values from your reactive data frames
+      questions <- questions_data()
+      responses <- responses()
+      group_summary <- group_summary()
+      patient_data <- reactiveValuesToList(patient_data)
+      report_language <- input$language
+
+      # Set up parameters to pass to Quarto
+      params <- list(
+        questions = questions,
+        responses = responses |> dplyr::select(!group) |> distinct(id, .keep_all = TRUE),
+        group_summary = group_summary,
+        patient = patient_data,
+        date = Sys.Date(),
+        report_language = report_language
+      )
+
+      notification_text <- ifelse(report_language == "de",
+        "Bericht wird erzeugt...",
+        "Report is being generated..."
+      )
+
+      id <- showNotification(
+        ui = notification_text,
+        duration = NULL,
+        closeButton = FALSE,
+        type = "message"
+      )
+      on.exit(removeNotification(id), add = TRUE)
+
+      # Set working directory to temp directory
+      oldwd <- setwd(tempDir)
+      on.exit(setwd(oldwd), add = TRUE)
+
+      # Render the report
+      quarto::quarto_render(
+        input = "template.qmd", # call this file in the temporary directory
+        output_file = "report.pdf",
+        execute_params = params,
+        output_format = "pdf"
+      )
+      # Copy the rendered file to the destination
+      file.copy(file.path(tempDir, "report.pdf"), file, overwrite = TRUE)
+    },
+    contentType = "application/pdf"
+  )
 }
 
 shinyApp(ui, server)
