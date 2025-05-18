@@ -3,8 +3,8 @@ Eine interaktive Version des Flämischen CVI Fragebogen.
 
 An interactive version of the Flemish CVI Questionnaire.
 
-Version 1.2
-Last updated: 10.05.2025 
+Version 1.3
+Last updated: 18.05.2025 
 
 ### Was ist das?
 
@@ -24,6 +24,11 @@ Aktuell werden nur die 35 der 46 Fragen ausgewertet, die auch im Paper von Ben I
 **Die eingetragenen Daten werden nicht gesichert. Nach 15 Minuten Inaktivität sind die Eingaben gelöscht. Ein PDF Report kann erzeugt werden.**
 
 ### Changes
+
+v1.3
+
+- cleaned up js code and added shinyscroll
+- added modal before resetting
 
 v1.2
 

@@ -1,7 +1,7 @@
 # FCVIQ ------
 # An interactive Version of the Flemish CVI Questionnaire.
 
-# Version 1.2
+# Version 1.3
 # Last updated: 10.05.2025
 
 # Copyright (C) 2025  J. Corazolla
@@ -23,6 +23,7 @@
 # Load libraries ------
 library(shiny)
 library(shinyjs)
+library(shinyscroll)
 library(bslib)
 library(dplyr)
 library(tidyr)
@@ -40,8 +41,10 @@ tempDir <- prepare_report()
 # Define UI  ------
 ui <- bslib::page_fillable(
   useShinyjs(),
+  use_shinyscroll(),
   theme = bs_theme(version = 5, `enable-shadows` = TRUE),
   title = "Flemish CVI Questionnaire (FCVIQ)",
+  inlineCSS(list(.unanswered = "border-left: 4px solid red")),
   navset_pill(
     nav_panel("FCVIQ", uiOutput("questionsUI"), value = "input"),
     nav_panel("Auswertung", uiOutput("resultsOutput"), value = "results"),
@@ -174,11 +177,11 @@ server <- function(input, output, session) {
 
     if (input$language == "de") {
       title_text <- "Flämischer CVI Fragebogen"
-      explainer <- "Bitte wählen Sie alle Antworten aus,
+      explainer  <- "Bitte wählen Sie alle Antworten aus,
       die auf Ihr Kind zutreffen."
     } else {
       title_text <- "Flemish CVI Questionnaire"
-      explainer <- "Please answer all the following questions.
+      explainer  <- "Please answer all the following questions.
       Tick yes if the question applies to your child."
     }
 
@@ -216,25 +219,25 @@ server <- function(input, output, session) {
         # Add questions
         lapply(seq_len(nrow(questions)), function(i) {
           question_id <- questions$id[i]
+          
+          input_id <- paste0("q_", question_id)
+          
           # Get question text based on selected language
           question_text <- questions$question_de[i]
 
           if (input$language == "en") {
             question_text <- questions$question_en[i]
           }
-
+          
           div(
             id = paste0("question_container_", question_id),
-            class = "question-container",
-            style = "padding: 10px;  border-left: 4px solid transparent;
-            border-top: 2px solid grey",
             tagList(fluidRow(column(
               width = 8,
               h6(paste0(i, ": ", question_text))
             ), column(
               width = 4,
               radioButtons(
-                inputId = paste0("q_", question_id),
+                inputId = input_id,
                 label = NULL,
                 choices = if (input$language == "de") {
                   c("Trifft nicht zu" = FALSE, "Trifft zu" = TRUE)
@@ -247,7 +250,7 @@ server <- function(input, output, session) {
             )))
           )
         }),
-        actionButton("submit", "Auswerten", class = "btn-primary", width = "100%"),
+        actionButton("submit", "Auswerten", class = "btn-primary", width = "100%")
       )
     )
   })
@@ -265,58 +268,64 @@ server <- function(input, output, session) {
       group_raw = character(),
       stringsAsFactors = FALSE
     )
-
-    # Check if all questions are answered
-    all_answered <- TRUE
-    unanswered_questions <- c()
-
-    # Reset all question container styles first
-    for (i in seq_len(nrow(questions))) {
+    
+    lapply(seq_len(nrow(questions)), function (i) {
       question_id <- questions$id[i]
-      runjs(sprintf("document.getElementById('question_container_%s').style.borderLeft = '4px solid transparent';", question_id))
-    }
-
-    for (i in seq_len(nrow(questions))) {
-      question_id <- questions$id[i]
+      container <- paste0("question_container_", question_id)
       input_id <- paste0("q_", question_id)
+      
+      shinyjs::toggleClass(id = container, 
+                           class = "unanswered", 
+                           condition = is.null(input[[input_id]]))
+    })
 
-      if (is.null(input[[input_id]])) {
-        all_answered <- FALSE
-        unanswered_questions <- c(unanswered_questions, i)
-
-        # Highlight unanswered question with red border
-        runjs(sprintf("document.getElementById('question_container_%s').style.borderLeft = '4px solid #dc3545';", question_id))
-        runjs(sprintf("document.getElementById('question_container_%s').scrollIntoView({ behavior: 'smooth', block: 'center' });", question_id))
-      } else {
-        response_data <- rbind(
-          response_data,
-          data.frame(
-            id = question_id,
-            response = as.logical(input[[input_id]]),
-            group_raw = questions$group[i],
-            stringsAsFactors = FALSE
-          )
-        )
+      # Find first unanswered question
+      unanswered_questions <- c()
+      for (i in seq_len(nrow(questions))) {
+        question_id <- questions$id[i]
+        input_id <- paste0("q_", question_id)
+        
+        if (is.null(input[[input_id]])) {
+          unanswered_questions <- c(unanswered_questions, question_id)
+        }
       }
-    }
-
-    if (!all_answered) {
+      print(unanswered_questions)
+      # Scroll to the first unanswered question
+      if (length(unanswered_questions) > 0) {
+        container <- paste0("question_container_", unanswered_questions[[1]])
+        shinyscroll::scroll(container, "center")
+        
       # Show error message with specific question numbers
       error_message <- if (input$language == "de") {
         paste0(
           "Bitte beantworten Sie alle Fragen. Fehlende Fragen: ",
-          paste(unanswered_questions, collapse = ", ")
+          paste(as.character(unanswered_questions), collapse = ", ")
         )
       } else {
         paste0(
           "Please answer all questions. Missing questions: ",
-          paste(unanswered_questions, collapse = ", ")
+          paste(as.character(unanswered_questions), collapse = ", ")
         )
       }
       showNotification(error_message, type = "warning")
-      return()
+        
+      }
+    
+    if (length(unanswered_questions) == 0) {
+     for (i in seq_len(nrow(questions))) {
+       question_id <- questions$id[i]
+       input_id <- paste0("q_", question_id)
+       
+      response_data <- rbind(
+        response_data,
+        data.frame(
+          id = question_id,
+          response = as.logical(input[[input_id]]),
+          group_raw = questions$group[i],
+          stringsAsFactors = FALSE
+        ))
     }
-
+      
     # Process multiple groups
     processed_responses <- response_data %>%
       # Split the group_raw column by comma and create separate rows
@@ -349,6 +358,7 @@ server <- function(input, output, session) {
 
     # show the results tab
     nav_select("page", "results")
+  }
   })
 
   # Render results
@@ -410,9 +420,9 @@ server <- function(input, output, session) {
     pat_mat <- matrix(
       data = c(
         "Name:", paste0(patient_info$surname, ", ", patient_info$name),
-        "Geburtsdatum:", patient_info$birth_date,
+        "Geburtsdatum:", format.Date(as.Date(patient_data$birth_date), format = "%d.%m.%Y"),
         "Aufgefüllt von:", patient_info$filled_by,
-        "Testdatum:", patient_info$fill_date,
+        "Testdatum:", format.Date(as.Date(patient_data$fill_date), format = "%d.%m.%Y"),
         "Alter:", age_label
       ),
       nrow = 5, byrow = TRUE
@@ -492,11 +502,47 @@ server <- function(input, output, session) {
 
   observeEvent(input$reset, {
     req(responses())
-
+    
+    if (input$language == "de") {
+      title_text <- "Reset bestätigen"
+      body_text <- "Sind Sie sicher, dass Sie zurücksetzen möchten? Alle Antworten gehen verloren."
+      confirm_text <- "Ja, zurücksetzen"
+      cancel_text <- "Abbrechen"
+      pdf_text <- "PDF Bericht herunterladen"
+    } else {
+      title_text <- "Confirm Reset"
+      body_text <- "Are you sure you want to reset? All responses will be lost."
+      confirm_text <- "Yes, Reset"
+      cancel_text <- "Cancel"
+      pdf_text <- "Download PDF Report"
+    }
+    
+    showModal(modalDialog(
+      title = title_text,
+      body_text,
+      footer = tagList(
+        actionButton("confirm_reset", confirm_text, class = "btn-danger"),
+        actionButton("modal_pdf", pdf_text, class = "btn-primary"),
+        modalButton(cancel_text)
+      ),
+      easyClose = TRUE
+    ))
+  })
+  
+  observeEvent(input$confirm_reset, {
+    removeModal()
+    
     on.exit(
       nav_select("page", "input"))
     
     session$reload()
+  })
+  
+  # Have modal pdf button trigger the main PDF functionality
+  observeEvent(input$modal_pdf, {
+    # Simulate a click on the main PDF report button
+    shinyjs::click("download_pdf")
+    removeModal()
   })
 
   output$information <- renderUI({
