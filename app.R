@@ -177,11 +177,11 @@ server <- function(input, output, session) {
 
     if (input$language == "de") {
       title_text <- "Flämischer CVI Fragebogen"
-      explainer  <- "Bitte wählen Sie alle Antworten aus,
+      explainer <- "Bitte wählen Sie alle Antworten aus,
       die auf Ihr Kind zutreffen."
     } else {
       title_text <- "Flemish CVI Questionnaire"
-      explainer  <- "Please answer all the following questions.
+      explainer <- "Please answer all the following questions.
       Tick yes if the question applies to your child."
     }
 
@@ -219,16 +219,16 @@ server <- function(input, output, session) {
         # Add questions
         lapply(seq_len(nrow(questions)), function(i) {
           question_id <- questions$id[i]
-          
+
           input_id <- paste0("q_", question_id)
-          
+
           # Get question text based on selected language
           question_text <- questions$question_de[i]
 
           if (input$language == "en") {
             question_text <- questions$question_en[i]
           }
-          
+
           div(
             id = paste0("question_container_", question_id),
             tagList(fluidRow(column(
@@ -268,33 +268,35 @@ server <- function(input, output, session) {
       group_raw = character(),
       stringsAsFactors = FALSE
     )
-    
-    lapply(seq_len(nrow(questions)), function (i) {
+
+    lapply(seq_len(nrow(questions)), function(i) {
       question_id <- questions$id[i]
       container <- paste0("question_container_", question_id)
       input_id <- paste0("q_", question_id)
-      
-      shinyjs::toggleClass(id = container, 
-                           class = "unanswered", 
-                           condition = is.null(input[[input_id]]))
+
+      shinyjs::toggleClass(
+        id = container,
+        class = "unanswered",
+        condition = is.null(input[[input_id]])
+      )
     })
 
-      # Find first unanswered question
-      unanswered_questions <- c()
-      for (i in seq_len(nrow(questions))) {
-        question_id <- questions$id[i]
-        input_id <- paste0("q_", question_id)
-        
-        if (is.null(input[[input_id]])) {
-          unanswered_questions <- c(unanswered_questions, question_id)
-        }
+    # Find first unanswered question
+    unanswered_questions <- c()
+    for (i in seq_len(nrow(questions))) {
+      question_id <- questions$id[i]
+      input_id <- paste0("q_", question_id)
+
+      if (is.null(input[[input_id]])) {
+        unanswered_questions <- c(unanswered_questions, question_id)
       }
-      print(unanswered_questions)
-      # Scroll to the first unanswered question
-      if (length(unanswered_questions) > 0) {
-        container <- paste0("question_container_", unanswered_questions[[1]])
-        shinyscroll::scroll(container, "center")
-        
+    }
+
+    # Scroll to the first unanswered question
+    if (length(unanswered_questions) > 0) {
+      container <- paste0("question_container_", unanswered_questions[[1]])
+      shinyscroll::scroll(container, "center")
+
       # Show error message with specific question numbers
       error_message <- if (input$language == "de") {
         paste0(
@@ -308,57 +310,57 @@ server <- function(input, output, session) {
         )
       }
       showNotification(error_message, type = "warning")
-        
-      }
-    
+    }
+
     if (length(unanswered_questions) == 0) {
-     for (i in seq_len(nrow(questions))) {
-       question_id <- questions$id[i]
-       input_id <- paste0("q_", question_id)
-       
-      response_data <- rbind(
-        response_data,
-        data.frame(
-          id = question_id,
-          response = as.logical(input[[input_id]]),
-          group_raw = questions$group[i],
-          stringsAsFactors = FALSE
-        ))
+      for (i in seq_len(nrow(questions))) {
+        question_id <- questions$id[i]
+        input_id <- paste0("q_", question_id)
+
+        response_data <- rbind(
+          response_data,
+          data.frame(
+            id = question_id,
+            response = as.logical(input[[input_id]]),
+            group_raw = questions$group[i],
+            stringsAsFactors = FALSE
+          )
+        )
+      }
+
+      # Process multiple groups
+      processed_responses <- response_data %>%
+        # Split the group_raw column by comma and create separate rows
+        separate_rows(group_raw, sep = "\\s*,\\s*") %>%
+        # Rename to group for consistency
+        rename(group = group_raw) %>%
+        # Trim any whitespace
+        mutate(group = trimws(group))
+
+      # Save responses
+      responses(processed_responses)
+
+      # Store all patient values for later use
+      patient_data$birth_date <- input$birthdate
+      patient_data$fill_date <- input$filldate
+      patient_data$surname <- input$surname
+      patient_data$name <- input$name
+      patient_data$filled_by <- input$filled_by
+      patient_data$age <- calculate_age(
+        patient_data$birth_date, patient_data$fill_date
+      )
+
+      # Show notification
+      submit_success <- if (input$language == "de") {
+        "Erfolgreich abgeschickt."
+      } else {
+        "Survey submitted successfully!"
+      }
+      showNotification(submit_success, type = "message")
+
+      # show the results tab
+      nav_select("page", "results")
     }
-      
-    # Process multiple groups
-    processed_responses <- response_data %>%
-      # Split the group_raw column by comma and create separate rows
-      separate_rows(group_raw, sep = "\\s*,\\s*") %>%
-      # Rename to group for consistency
-      rename(group = group_raw) %>%
-      # Trim any whitespace
-      mutate(group = trimws(group))
-
-    # Save responses
-    responses(processed_responses)
-
-    # Store all patient values for later use
-    patient_data$birth_date <- input$birthdate
-    patient_data$fill_date <- input$filldate
-    patient_data$surname <- input$surname
-    patient_data$name <- input$name
-    patient_data$filled_by <- input$filled_by
-    patient_data$age <- calculate_age(
-      patient_data$birth_date, patient_data$fill_date
-    )
-
-    # Show notification
-    submit_success <- if (input$language == "de") {
-      "Erfolgreich abgeschickt."
-    } else {
-      "Survey submitted successfully!"
-    }
-    showNotification(submit_success, type = "message")
-
-    # show the results tab
-    nav_select("page", "results")
-  }
   })
 
   # Render results
@@ -408,15 +410,14 @@ server <- function(input, output, session) {
 
   # Render patient data table
   output$patientOutput <- renderUI({
-    
     patient_info <- reactiveValuesToList(patient_data)
-    
+
     age_label <- paste0(patient_info$age$years, " Jahre, ", patient_info$age$months, " Monate")
-    
+
     if (patient_info$age$months == 1) {
       age_label <- paste0(patient_info$age$years, " Jahre, ", patient_info$age$months, " Monat")
     }
-    
+
     pat_mat <- matrix(
       data = c(
         "Name:", paste0(patient_info$surname, ", ", patient_info$name),
@@ -427,17 +428,17 @@ server <- function(input, output, session) {
       ),
       nrow = 5, byrow = TRUE
     )
-    
+
     gt_summary <- as.data.frame(pat_mat) |>
       gt() |>
       tab_options(
         table.width = pct(90),
         column_labels.hidden = TRUE
-        )
-    
+      )
+
     card(gt_summary, full_screen = FALSE, min_height = 300)
   })
-  
+
   # Render summary table
   output$summaryTable <- renderUI({
     req(group_summary())
@@ -502,7 +503,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$reset, {
     req(responses())
-    
+
     if (input$language == "de") {
       title_text <- "Reset bestätigen"
       body_text <- "Sind Sie sicher, dass Sie zurücksetzen möchten? Alle Antworten gehen verloren."
@@ -516,7 +517,7 @@ server <- function(input, output, session) {
       cancel_text <- "Cancel"
       pdf_text <- "Download PDF Report"
     }
-    
+
     showModal(modalDialog(
       title = title_text,
       body_text,
@@ -528,16 +529,17 @@ server <- function(input, output, session) {
       easyClose = TRUE
     ))
   })
-  
+
   observeEvent(input$confirm_reset, {
     removeModal()
-    
+
     on.exit(
-      nav_select("page", "input"))
-    
+      nav_select("page", "input")
+    )
+
     session$reload()
   })
-  
+
   # Have modal pdf button trigger the main PDF functionality
   observeEvent(input$modal_pdf, {
     # Simulate a click on the main PDF report button
