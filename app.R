@@ -248,7 +248,7 @@ server <- function(input, output, session) {
                   c("No" = FALSE, "Yes" = TRUE)
                 },
                 inline = TRUE,
-                selected = NA # ifelse(question_id %% 2 == 0, TRUE, FALSE) # change to NA for production, FALSE for testing
+                selected = NA 
               )
             )))
           )
