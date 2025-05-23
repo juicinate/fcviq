@@ -121,7 +121,6 @@ server <- function(input, output, session) {
         df$group <- as.character(df$group)
 
         questions_data(df)
-        showNotification("Questions loaded")
       },
       error = function(e) {
         showNotification(paste("Error loading questions file:", e$message),
