@@ -24,6 +24,7 @@
 library(shiny)
 library(shinyjs)
 library(shinyscroll)
+library(waiter)
 library(bslib)
 library(dplyr)
 library(tidyr)
@@ -42,6 +43,8 @@ tempDir <- prepare_report()
 ui <- bslib::page_fillable(
   useShinyjs(),
   use_shinyscroll(),
+  autoWaiter(),
+  waiterPreloader(),
   theme = bs_theme(version = 5, `enable-shadows` = TRUE),
   title = "Flemish CVI Questionnaire (FCVIQ)",
   inlineCSS(list(.unanswered = "border-left: 4px solid red")),
@@ -555,12 +558,25 @@ server <- function(input, output, session) {
       )
     )
   })
-
+  
+  w <- Waiter$new(fadeout = 100, html = tagList(spin_balance(), h6("Bericht wird erzeugt...")))
+  
+  observe({
+    if (input$language == "en") {
+    w$update(tagList(spin_balance(), h6("Bericht wird erzeugt...")))
+    } else {
+      w$update(tagList(spin_balance(), h6("Report is being generated...")))
+    }
+  })
+  
   output$download_pdf <- downloadHandler(
     filename = function() {
       paste0("report-", Sys.Date(), ".pdf")
     },
     content = function(file) {
+      w$show()
+      on.exit(w$hide())
+      
       # Get the current values from your reactive data frames
       questions <- questions_data()
       responses <- responses()
@@ -577,20 +593,7 @@ server <- function(input, output, session) {
         date = Sys.Date(),
         report_language = report_language
       )
-
-      notification_text <- ifelse(report_language == "de",
-        "Bericht wird erzeugt...",
-        "Report is being generated..."
-      )
-
-      id <- showNotification(
-        ui = notification_text,
-        duration = NULL,
-        closeButton = FALSE,
-        type = "message"
-      )
-      on.exit(removeNotification(id), add = TRUE)
-
+      
       # Set working directory to temp directory
       oldwd <- setwd(tempDir)
       on.exit(setwd(oldwd), add = TRUE)
