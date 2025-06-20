@@ -1,10 +1,16 @@
 ## FCVIQ
+
 Eine interaktive Version des Flämischen CVI Fragebogen.
 
 An interactive version of the Flemish CVI Questionnaire.
 
 Version 1.4
+
 Last updated: 23.05.2025 
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
+[![Release](https://img.shields.io/gitea/v/release/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)](https://img.shields.io/gitea/v/release/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)
 
 ### Was ist das?
 
@@ -20,6 +26,7 @@ Aktuell werden nur die 35 der 46 Fragen ausgewertet, die auch im Paper von Ben I
 
 - Appendix 1 ist der originale Fragebogen (auf Englisch)
 - Table S3 stellt die Zuordnung der Fragen zu den jeweiligen Faktoren dar
+- Im pdf-Report, den diese Applikation erzeugt sind die Zuordnungen gelistet
 
 **Die eingetragenen Daten werden nicht gesichert. Nach 15 Minuten Inaktivität sind die Eingaben gelöscht. Ein PDF Report kann erzeugt werden.**
 
@@ -43,6 +50,8 @@ v1.2
 
 ### Links
 
+[Disroot](https://git.disroot.org/juicinate/fcviq)
+
 [Github](https://github.com/juicinate/fcviq)
 
 [Live Demo](https://juicinate.shinyapps.io/fcviq)
@@ -52,8 +61,6 @@ v1.2
 Ortibus, E., Laenen, A., Verhoeven, J., De Cock, P., Casteels, I., Schoolmeesters, B., Buyck, A. and Lagae, L. (2011), Screening for Cerebral Visual Impairment: Value of a CVI Questionnaire. Neuropediatrics, 42(04): 138-147. [doi](https://doi.org/10.1055/s-0031-1285908)
 
 Ben Itzhak, N., Vancleef, K., Franki, I., Laenen, A., Wagemans, J. and Ortibus, E. (2020), Visuoperceptual profiles of children using the Flemish cerebral visual impairment questionnaire. Dev Med Child Neurol, 62: 969-976. [doi](https://doi.org/10.1111/dmcn.14448)
-
-[Sozialpädiatrische Sehambulanz (SoPSA)](https://www.landeskrankenhaus.de/rheinhessen-fachklinik-mainz/unser-angebot/sozialpaediatrische-sehambulanz)
 
 Fragebogen modifiziert und übersetzt von J. Corazolla.
 

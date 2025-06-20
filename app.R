@@ -36,9 +36,6 @@ library(quarto)
 # Source utilities ------
 source("utils.R")
 
-# Set temorary directory for quarto ------
-tempDir <- prepare_report()
-
 # Define UI  ------
 ui <- bslib::page_fillable(
   useShinyjs(),
@@ -73,6 +70,9 @@ ui <- bslib::page_fillable(
 )
 
 server <- function(input, output, session) {
+  # Set temporary directory for quarto
+  tempDir <- prepare_report()
+  
   # Reactive value to store the questions data
   questions_data <- reactiveVal(NULL)
 
