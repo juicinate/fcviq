@@ -1,12 +1,14 @@
 ## FCVIQ
 
-Eine interaktive Version des Flämischen CVI Fragebogen.
-
-An interactive version of the Flemish CVI Questionnaire.
-
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Release](https://img.shields.io/gitea/v/release/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)](https://git.disroot.org/juicinate/fcviq) [![Gitea Last Commit](https://img.shields.io/gitea/last-commit/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)](https://git.disroot.org/juicinate/fcviq)
 
-### Was ist das?
+----
+
+### Deutsch
+
+Eine interaktive Version des Flämischen CVI Fragebogen.
+
+#### Was es bietet
 
 Die Applikaton soll es erleichtern, den Flämischen CVI Fragebogen auszufüllen. [Eine Live-Demo ist verfügbar.](https://juicinate.shinyapps.io/fcviq)
 
@@ -14,17 +16,37 @@ Der Fragebogen ermöglicht es Fachkräften, im Rahmen der Diagnostik gezielte Fr
 
 ***Ein Fragebogen ersetzt keine medizinische Diagnose. Wenn Sie sich Sorgen machen, sprechen Sie mit Ihrer Kinderärtztin.***
 
-### Limitationen / Limitations
+#### Limitationen
 
-Aktuell werden nur die 35 der 46 Fragen ausgewertet, die auch im Paper von Ben Itzhak et al. (2020) in der Faktoreananalyse eingesetzt wurden. Siehe dazu: [dieses Paper](https://doi.org/10.1111/dmcn.14448), die Anhänge: 
+Aktuell werden nur die 35 der 46 Fragen ausgewertet, die auch im Paper von Ben Itzhak et al. (2020) in der Faktoreananalyse eingesetzt wurden.
 
-- Appendix 1 ist der originale Fragebogen (auf Englisch)
-- Table S3 stellt die Zuordnung der Fragen zu den jeweiligen Faktoren dar
-- Im pdf-Report, den diese Applikation erzeugt sind die Zuordnungen gelistet
+Im pdf-Report, den diese Applikation erzeugt sind die Zuordnungen der Fragen zu den jeweiligen Domänen gelistet
 
 **Die eingetragenen Daten werden nicht gesichert. Nach 15 Minuten Inaktivität sind die Eingaben gelöscht. Ein PDF Report kann erzeugt werden.**
 
-### Changes
+----
+
+### English
+
+An interactive version of the Flemish CVI Questionnaire.
+
+#### What it offers
+
+This application aims to make filling out the Flemish CVI Questionnaire easier. [A Live Demo is available.](https://juicinate.shinyapps.io/fcviq)
+
+The questionnaire enables professionals to ask parents specific questions as part of the diagnostic process in order to identify possible indications of a cerebral visual impairment (CVI) and categorise them into domains. 
+
+***A questionnaire does not substitute a medical diagnosis. If you are concerned, talk to your paediatrician ***. 
+
+#### Limitations
+
+Currently only the 35 questions from the five factor analysis in Ben Itzhak et al. (2020) are evaluated.
+
+The pdf report notes which question belongs to which domain.
+
+----
+
+### Changelog
 
 v1.4
 
