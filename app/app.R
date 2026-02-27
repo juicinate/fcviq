@@ -1,8 +1,8 @@
 # FCVIQ ------
 # An interactive Version of the Flemish CVI Questionnaire.
 
-# Version 1.3
-# Last updated: 10.05.2025
+# Version 1.5
+# Last updated: 27.02.2026
 
 # Copyright (C) 2025  J. Corazolla
 # https://github.com/juicinate
