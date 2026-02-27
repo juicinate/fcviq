@@ -1,6 +1,8 @@
 ## FCVIQ
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Release](https://img.shields.io/gitea/v/release/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)](https://git.disroot.org/juicinate/fcviq) [![Gitea Last Commit](https://img.shields.io/gitea/last-commit/juicinate/fcviq?gitea_url=https%3A%2F%2Fgit.disroot.org)](https://git.disroot.org/juicinate/fcviq)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) ![GitHub Release](https://img.shields.io/github/v/release/juicinate/fcviq)
+ ![GitHub last commit](https://img.shields.io/github/last-commit/juicinate/fcviq)
+
 
 ----
 
@@ -68,7 +70,7 @@ v1.2
 
 ### Links
 
-[Disroot](https://git.disroot.org/juicinate/fcviq)
+[Codeberg](https://git.codeberg.org/juicinate/fcviq)
 
 [Github](https://github.com/juicinate/fcviq)
 
